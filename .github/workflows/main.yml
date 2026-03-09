@@ -1,7 +1,7 @@
 name: Android Emulator + Tailscale
 
 on:
-  workflow_dispatch: # manual trigger
+  workflow_dispatch:
 
 jobs:
   emulator:
@@ -12,24 +12,30 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 2️⃣ Install Android emulator dependencies
+      # 2️⃣ Install Dependencies
       - name: Install Dependencies
         run: |
-          sudo apt update && sudo apt install -y unzip curl git openjdk-11-jdk
+          sudo apt update && sudo apt install -y unzip curl git openjdk-11-jdk wget qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
-      # 3️⃣ Install Android SDK command line tools
+      # 3️⃣ Install Android SDK Command Line Tools
       - name: Install Android SDK
         run: |
-          mkdir -p $HOME/android-sdk
-          curl -o sdk-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip sdk-tools.zip -d $HOME/android-sdk/cmdline-tools
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          curl -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
           yes | $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses
-          $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-30" "emulator"
+          $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-30" "emulator" "system-images;android-30;google_apis;x86_64"
 
-      # 4️⃣ Create & start Android emulator
+      # 4️⃣ Create & Start Android Emulator
+      - name: Create Emulator
+        run: |
+          echo "no" | $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/avdmanager create avd \
+            -n testavd \
+            -k "system-images;android-30;google_apis;x86_64" \
+            --force
+
       - name: Start Emulator
         run: |
-          echo "no" | $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/avdmanager create avd -n testavd -k "system-images;android-30;google_apis;x86_64" --force
           $HOME/android-sdk/emulator/emulator -avd testavd -no-window -no-audio -no-boot-anim &
           adb wait-for-device
           adb devices
@@ -39,7 +45,7 @@ jobs:
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      # 6️⃣ Connect Tailscale using Auth Key
+      # 6️⃣ Connect Tailscale
       - name: Start Tailscale
         env:
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}

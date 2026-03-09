@@ -1,4 +1,4 @@
-name: Android Emulator + Tailscale Fast
+name: Temporary Android Emulator + Tailscale (API 28)
 
 on:
   workflow_dispatch:
@@ -6,33 +6,36 @@ on:
 jobs:
   emulator:
     runs-on: ubuntu-latest
+    timeout-minutes: 120  # Max 2 hours
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 2️⃣ Use prebuilt Android Emulator action (fast)
-      - name: Run Android Emulator
+      # 2️⃣ Run Android Emulator (Prebuilt image, API 28 x86_64)
+      - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 28
           arch: x86_64
           target: google_apis
-          script: adb devices
+          script: |
+            adb devices
+            # add your adb commands here
 
       # 3️⃣ Install Tailscale
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      # 4️⃣ Connect Tailscale
+      # 4️⃣ Connect Tailscale (private network access)
       - name: Start Tailscale
         env:
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
           sudo tailscale up --authkey $TAILSCALE_AUTHKEY --hostname github-emulator
 
-      # 5️⃣ Verify Tailscale
+      # 5️⃣ Verify Tailscale connection
       - name: Show Tailscale Status
         run: tailscale status

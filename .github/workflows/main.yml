@@ -1,4 +1,4 @@
-name: Android Emulator + Tailscale
+name: Android Emulator + Tailscale Fast
 
 on:
   workflow_dispatch:
@@ -12,46 +12,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 2️⃣ Install Dependencies
-      - name: Install Dependencies
-        run: |
-          sudo apt update && sudo apt install -y unzip curl git openjdk-11-jdk wget qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+      # 2️⃣ Use prebuilt Android Emulator action (fast)
+      - name: Run Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          script: adb devices
 
-      # 3️⃣ Install Android SDK Command Line Tools
-      - name: Install Android SDK
-        run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          curl -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip cmdline-tools.zip -d $HOME/android-sdk/cmdline-tools
-          yes | $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager --licenses
-          $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/sdkmanager "platform-tools" "platforms;android-30" "emulator" "system-images;android-30;google_apis;x86_64"
-
-      # 4️⃣ Create & Start Android Emulator
-      - name: Create Emulator
-        run: |
-          echo "no" | $HOME/android-sdk/cmdline-tools/cmdline-tools/bin/avdmanager create avd \
-            -n testavd \
-            -k "system-images;android-30;google_apis;x86_64" \
-            --force
-
-      - name: Start Emulator
-        run: |
-          $HOME/android-sdk/emulator/emulator -avd testavd -no-window -no-audio -no-boot-anim &
-          adb wait-for-device
-          adb devices
-
-      # 5️⃣ Install Tailscale
+      # 3️⃣ Install Tailscale
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      # 6️⃣ Connect Tailscale
+      # 4️⃣ Connect Tailscale
       - name: Start Tailscale
         env:
           TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
         run: |
           sudo tailscale up --authkey $TAILSCALE_AUTHKEY --hostname github-emulator
 
-      # 7️⃣ Verify Tailscale
+      # 5️⃣ Verify Tailscale
       - name: Show Tailscale Status
         run: tailscale status
